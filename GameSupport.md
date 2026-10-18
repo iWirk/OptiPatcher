@@ -61,6 +61,7 @@ TEMPLATE FOR NEW ENTRIES
 | Echo Point Nova | ✔️ | N/A |  |
 | Echoes of the End: Enhanced Edition | ✔️ | ✅ |  |
 | Enotria: The Last Song | ✔️ | ✅ |  |
+| Enshrouded | ✔️ | N/A | _Vulkan; no FG. Vendor gate patched on the DLSS init path only_ |
 | Eternal Strands | ✔️ | ✅ | _Steam exe_ |
 | EVERSPACE 2 | ✔️ | ✅ |  |
 | Evil West | ✔️ | N/A |  |

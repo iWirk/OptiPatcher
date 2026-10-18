@@ -2830,6 +2830,28 @@ static void CheckForPatch()
         _patchResult = patchAResult && patchBCResult && patchDResult && patchEResult && patchGResult && patchHResult;
     }
 
+    // Enshrouded
+    else if (exeName == "enshrouded.exe")
+    {
+        // Vulkan-only game with statically linked NGX (rel_310_9). The DLSS init path checks the
+        // physical device's vendorID against NVIDIA before doing anything else:
+        //   cmp [rdi+r13+0x18], 0x10DE
+        //   je  <ngx feature requirement path>
+        // Non-NVIDIA falls through to "[graphics] Skipping DLSS on non-Nvidia GPU", clears the
+        // availability flag and returns. Everything after the vendor branch talks to nvngx_dlss.dll,
+        // which OptiScaler replaces, so letting every vendor take the same branch exposes DLSS SR
+        // inputs without enabling any vendor-specific rendering path.
+        std::string_view pattern("42 81 7C 2F 18 DE 10 00 00 74 39");
+        auto patchAddress = (void*) scanner::GetAddress(exeModule, pattern, 9);
+
+        if (patchAddress != nullptr)
+        {
+            std::vector<BYTE> patch = { 0xEB, 0x39 };
+            patcher::PatchAddress(patchAddress, &patch);
+            _patchResult = true;
+        }
+    }
+
     // SM2
     //else if (exeName == "warhammer 40000 space marine 2 - retail.exe")
     //{
