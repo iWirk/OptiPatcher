@@ -2689,6 +2689,169 @@ static void CheckForPatch()
         }
     }
 
+    // SM2
+    else if (exeName == "warhammer 40000 space marine 2 - retail.exe")
+    {
+#if 0
+        /*
+        // Patches B & C: Force jne near → jmp near on the two BAD00000 checks
+        // (Gate 1 = NGX Init, Gate 2 = NGX Caps).
+        bool patchBCResult = false;
+        std::string_view patternGates("25 00 00 F0 FF 3D 00 00 D0 BA 0F 85");
+        uintptr_t searchStart = 0;
+        int gatesPatched = 0;
+
+        for (int i = 0; i < 3; i++)
+        {
+            auto gateAddr = (void*) scanner::GetAddress(exeModule, patternGates, 10, searchStart);
+            if (gateAddr == nullptr)
+                break;
+
+            int32_t relOffset;
+            memcpy(&relOffset, (uint8_t*)gateAddr + 2, 4);
+            relOffset += 1;
+            std::vector<BYTE> jmpPatch = { 0xE9, (BYTE)(relOffset & 0xFF), (BYTE)((relOffset >> 8) & 0xFF), (BYTE)((relOffset >> 16) & 0xFF), (BYTE)((relOffset >> 24) & 0xFF), 0x90 };
+            patcher::PatchAddress(gateAddr, &jmpPatch);
+
+            searchStart = (uintptr_t)gateAddr + 6;
+            gatesPatched++;
+        }
+
+        if (gatesPatched == 3)
+            patchBCResult = true;
+
+        // Patches D1 & D2: NOP Driver Version je near checks (ebx/edi variants, Gates 3a/3b)
+        bool patchDResult = false;
+        std::string_view patternDVReg("81 ? 00 00 F0 FF 81 ? 00 00 D0 BA 0F 84 ? ? ? ?");
+        searchStart = 0;
+        int dvPatched = 0;
+
+        for (int i = 0; i < 2; i++)
+        {
+            auto dvAddr = (void*) scanner::GetAddress(exeModule, patternDVReg, 12, searchStart);
+            if (dvAddr == nullptr)
+                break;
+
+            std::vector<BYTE> nop6 = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+            patcher::PatchAddress(dvAddr, &nop6);
+
+            searchStart = (uintptr_t)dvAddr + 6;
+            dvPatched++;
+        }
+
+        // Patch D3: NOP Driver Version je near check (eax variant, Gate 3c)
+        std::string_view patternDVEax("25 00 00 F0 FF 3D 00 00 D0 BA 0F 84 ? ? ? ?");
+        auto dvEaxAddr = (void*) scanner::GetAddress(exeModule, patternDVEax, 10);
+        if (dvEaxAddr != nullptr)
+        {
+            std::vector<BYTE> nop6 = { 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+            patcher::PatchAddress(dvEaxAddr, &nop6);
+            dvPatched++;
+        }
+
+        if (dvPatched == 3)
+            patchDResult = true;
+
+        // Patch E: Force [r14+24] je → jmp (Gate 3d, bypasses needs-update handler)
+        bool patchEResult = false;
+        std::string_view patternR14Check("41 83 7E 24 00 0F 84 ? ? ? ?");
+        auto r14Addr = (void*) scanner::GetAddress(exeModule, patternR14Check, 5);
+        if (r14Addr != nullptr)
+        {
+            int32_t relOffset;
+            memcpy(&relOffset, (uint8_t*)r14Addr + 2, 4);
+            relOffset += 1;
+            std::vector<BYTE> jmpPatch = { 0xE9, (BYTE)(relOffset & 0xFF), (BYTE)((relOffset >> 8) & 0xFF), (BYTE)((relOffset >> 16) & 0xFF), (BYTE)((relOffset >> 24) & 0xFF), 0x90 };
+            patcher::PatchAddress(r14Addr, &jmpPatch);
+            patchEResult = true;
+        }*/
+#else
+        // Patches A-E disabled for testing
+        bool patchBCResult = true, patchDResult = true, patchEResult = true;
+#endif
+
+
+        // Patch A: Bypass SuperSampling.Available NGX parameter check (Gate 4)
+        bool patchAResult = false;
+        std::string_view patternAvailable("25 00 00 F0 FF 3D 00 00 D0 BA 74 ? 39 7D ? 74 ?");
+
+        auto patchAvail1 = (void*) scanner::GetAddress(exeModule, patternAvailable, 10);
+        auto patchAvail2 = (void*) scanner::GetAddress(exeModule, patternAvailable, 15);
+
+        if (patchAvail1 != nullptr && patchAvail2 != nullptr)
+        {
+            std::vector<BYTE> nop2 = { 0x90, 0x90 };
+            patcher::PatchAddress(patchAvail1, &nop2);
+            patcher::PatchAddress(patchAvail2, &nop2);
+            patchAResult = true;
+        }
+
+        // Patch G: NOP the GPU vendor check at D3D12 post-init (force NVIDIA path)
+        // amd pci vendor id: 0x1002
+        // nvdia pci vendor id: 0x10de
+
+        // after dx12 init local_68 looks like its storing the pci vendor id as its used to compare with amd's before
+        // initializing al2 anf ags a few lines above. looks like its only checking for nvidia's vendor id here before
+        // initializing streamline ????????????
+        bool patchGResult = false;
+        std::string_view patternVendorCheck("81 BD B0 08 00 00 DE 10 00 00 75 ?");
+        auto vendorAddr = (void*) scanner::GetAddress(exeModule, patternVendorCheck, 10);
+        if (vendorAddr != nullptr)
+        {
+            std::vector<BYTE> nop2 = { 0x90, 0x90 };
+            patcher::PatchAddress(vendorAddr, &nop2);
+            patchGResult = true;
+        }
+
+        // Patch H: Bypass RTAO vendor check
+#if 0
+        bool patchHResult = false, patchH2Result = true;
+        std::string_view patternRTAO("7C 0C 41 83 7E 34 00 75 ?");
+        auto rtaoAddr = (void*) scanner::GetAddress(exeModule, patternRTAO, 7);
+        if (rtaoAddr != nullptr)
+        {
+            std::vector<BYTE> nop2 = { 0x90, 0x90 };
+            patcher::PatchAddress(rtaoAddr, &nop2);
+            patchHResult = true;
+
+            // Stage 2: Also NOP the driver version check if vendor check succeeded
+            std::string_view patternRTAOExt("41 81 BE F4 00 00 00 F8 2A 00 00 7C 0C 41 83 7E 34 00 75 ?");
+            auto rtaoExtAddr = (void*) scanner::GetAddress(exeModule, patternRTAOExt, 11);
+            if (rtaoExtAddr != nullptr)
+            {
+                patcher::PatchAddress(rtaoExtAddr, &nop2);
+                patchH2Result = true;
+            }
+        }
+#else
+        bool patchHResult = true, patchH2Result = true;
+#endif
+
+        _patchResult = patchAResult && patchBCResult && patchDResult && patchEResult && patchGResult && patchHResult;
+    }
+
+    // SM2
+    //else if (exeName == "warhammer 40000 space marine 2 - retail.exe")
+    //{
+        // amd pci vendor id: 0x1002
+        // nvdia pci vendor id: 0x10de
+
+
+        // after dx12 init local_68 looks like its storing the pci vendor id as its used to compare with amd's before initializing al2 anf ags a few lines above.
+        // looks like its only checking for nvidia's vendor id here before initializing streamline ????????????
+     //   std::string_view patternVendorCheck("81 BD B0 08 00 00 DE 10 00 00 75 ?");
+    //    auto vendorAddr = (void*) scanner::GetAddress(exeModule, patternVendorCheck, 10);
+    //    if (vendorAddr != nullptr)
+    //    {
+    //        std::vector<BYTE> nop2 = { 0x90, 0x90 };
+   //         patcher::PatchAddress(vendorAddr, &nop2);
+   //         _patchResult = true;
+   //     }
+  //  }
+
+    // ""
+    // "0F B6 45 E6 48 8D 4D D7 F6 D0 A8 01 48 0F 44 4D D7 FF 15 ? ? ? ? E8 ? ? ? ? 84 C0 75 24"
+
     //// Crimson Desert
     // else if (exeName == "NOT-crimsondesert.exe")
     //{

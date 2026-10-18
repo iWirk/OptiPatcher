@@ -9,6 +9,10 @@
 *.user
 *.userosscache
 *.sln.docstates
+sm2_full.txt
+sm2.txt
+.opencode/
+.opencode.zip
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
