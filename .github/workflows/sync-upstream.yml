@@ -1,0 +1,72 @@
+name: Sync Upstream (soft fork)
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/optiscaler/OptiPatcher.git
+          git fetch upstream main --tags
+
+      - name: Check if sync needed
+        id: check
+        run: |
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Rebase onto upstream
+        if: steps.check.outputs.needed == 'true'
+        run: git rebase upstream/main
+
+      - name: Force-push rebased main
+        if: steps.check.outputs.needed == 'true'
+        run: git push --force-with-lease origin main
+
+      - name: Trigger Build
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run Build.yml --ref main
+
+      - name: Report conflict
+        if: failure()
+        run: |
+          {
+            echo "## Upstream sync failed"
+            echo ""
+            echo "The rebase of the Space Marine 2 commit onto \`upstream/main\` hit a conflict."
+            echo "\`main\` was left unchanged. Resolve locally with:"
+            echo ""
+            echo '```sh'
+            echo "git fetch upstream"
+            echo "git rebase upstream/main"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
